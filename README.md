@@ -2,15 +2,6 @@
 
 **Miscellaneous tools for working with molecular sequence data.**
 
-ncbi_fetch.pl is a script for retrieving data from NCBI
-
-```
-  	usage: ncbi_fetch.pl -r report -q query -o output -d database
-
-	# Example ./ncbi_fetch.pl -r gb -q "Hepatitis C Virus"[Organism] -o HCV_all_genbank.gb -d Nucleotide
-
-```
-
 data_tool.pl provides utilities for manipulating and sorting FASTA files:
 
 
@@ -43,3 +34,14 @@ data_tool.pl provides utilities for manipulating and sorting FASTA files:
 ```
 
 Warning: BETA VERSIONS, THESE SCRIPTS MAY CONTAIN BUGS ETC. 
+
+
+ncbi_fetch.pl is a script for retrieving data from NCBI
+
+```
+  	usage: ncbi_fetch.pl -r report -q query -o output -d database
+
+	# Example ./ncbi_fetch.pl -r gb -q "Hepatitis C Virus"[Organism] -o HCV_all_genbank.gb -d Nucleotide
+
+```
+
