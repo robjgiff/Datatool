@@ -166,7 +166,7 @@ sub run_sort_tools_cmd_line {
 
 #***************************************************************************
 # Subroutine:  run_special_tools_cmd_line
-# Description: hand off to sorting utilities
+# Description: hand off to various bespoke wrangling scripts
 #***************************************************************************
 sub run_special_tools_cmd_line {
 
@@ -178,8 +178,14 @@ sub run_special_tools_cmd_line {
 	unless ($output_path) { $output_path .= './'; }	
 	$self->show_title();
 	
-	if ($special eq 1) {  # Shorten FASTA headers (capture data)
+	if ($special eq 1) {  # RABV clean up
 		$self->do_rabv_cleanup($datafile);
+	}
+	elsif ($special eq 2) {  # Eric hunter transmission pairs data
+		$self->do_hunter_parsing1($datafile);
+	}
+	elsif ($special eq 3) {  # Eric hunter transmission pairs data
+		$self->do_hunter_parsing2($datafile);
 	}
 	else {
 		die;
@@ -189,6 +195,195 @@ sub run_special_tools_cmd_line {
 ############################################################################
 # INTERNALS
 ############################################################################
+
+#***************************************************************************
+# Subroutine:  do_hunter_parsing1
+# Description: 
+#***************************************************************************
+sub do_hunter_parsing1 {
+
+	my ($self, $datafile) = @_;
+
+	my @hunter;
+	$fileio->read_file($datafile, \@hunter);
+	my $i = 0;
+	my @clean;
+	my %clean;
+	my %linkage;
+
+	my $clean_line = '';
+	foreach my $line (@hunter) {
+	
+		$i++;
+		chomp $line;
+		#print "\n\t ### LINE $i:  $line";
+		my @line = split("\t", $line);
+		my $patient_id = $line[1];
+		my $link       = $line[2];
+
+		my @patient_id = split("", $patient_id);
+		my $sex = pop @patient_id;
+
+		unless ($sex) { die; }
+		my $f_sex;
+		if ($sex eq 'F')    { $f_sex = 'Female'; }
+		elsif ($sex eq 'M') { $f_sex = 'Male';   }
+		else { 
+			print "\n\t PATIENT: $patient_id\n\n ";
+			die; 
+		}
+		#print "\n\t ### LINE $i:  $patient_id ($f_sex)";
+		$clean{$patient_id} = $f_sex;
+
+		$clean{$patient_id} = $f_sex;
+
+	}
+
+	my $j = 0;
+	my @ids = keys %clean;
+	foreach my $id (@ids) {
+	
+		$j++;
+		print "\n\t ### LINE $j: ID: $id";
+		my $full_sex = $clean{$id};
+		unless ($full_sex) { die; }
+		my $line = "$id\t$full_sex\n";
+		push (@clean, $line);
+	}
+
+	$fileio->write_file("$datafile.clean.txt", \@clean);
+
+}
+
+#***************************************************************************
+# Subroutine:  do_hunter_parsing2
+# Description: 
+#***************************************************************************
+sub do_hunter_parsing2 {
+
+	my ($self, $datafile) = @_;
+
+	my @hunter;
+	$fileio->read_file($datafile, \@hunter);
+	my $i = 0;
+	my %linked;
+	
+	foreach my $line (@hunter) {
+	
+		$i++;
+		chomp $line;
+		#print "\n\t ### LINE $i:  $line";
+		my @line = split("\t", $line);
+		my $patient_id = $line[1];
+		my $link       = $line[2];
+		my @patient_id = split("", $patient_id);
+		my $sex = pop @patient_id;
+		my $connect_id = join ('', @patient_id);
+		
+		if ($link eq 'D') {
+		
+			$self->get_linkage(\%linked, $datafile, $patient_id, $connect_id, $link, $sex);
+		}
+	}
+	
+	#$devtools->print_hash(\%linked); die;
+
+	my @transmission;
+	push (@transmission, "donor\trecipient\trisk_factor\n");
+	my @donor_ids = keys %linked;
+	my $x = 0;
+	foreach my $donor (@donor_ids) {
+
+		$x++;
+		my @donor = split("", $donor);
+		my $d_sex = pop @donor;
+	
+		my $recipient_hash = $linked{$donor};		
+		my @recipients = keys %$recipient_hash;
+		foreach my $recipient (@recipients) {
+	
+			print "\n\t $x - $recipient"; 
+
+			my @recipient = split("", $recipient);
+			my $lr_sex = pop @recipient;		
+			unless ($lr_sex eq 'M' or $lr_sex eq 'F') { 
+				die;
+			} 
+		
+			my $risk_factor;
+			if ($d_sex eq 'M' and $lr_sex eq 'F') {
+				$risk_factor = 'MTF';
+			}
+			elsif ($d_sex eq 'F' and $lr_sex eq 'M') {
+				$risk_factor = 'FTM';
+			}
+			elsif ($d_sex eq 'M' and $lr_sex eq 'M') {
+				$risk_factor = 'MSM';
+			}
+			else { die; }
+
+			my $transmission_line = "$donor\t$recipient\t$risk_factor\n";		
+			print "\n\t $transmission_line";
+			push (@transmission, $transmission_line);
+		}	
+	}
+
+	$fileio->write_file("transmission.txt", \@transmission);
+
+}
+
+#***************************************************************************
+# Subroutine:  get_linkage
+# Description: 
+#***************************************************************************
+sub get_linkage {
+
+	my ($self, $linked_ref, $datafile, $patient_id, $connect_id, $link, $sex) = @_;
+
+	my @hunter_data;
+	$fileio->read_file($datafile, \@hunter_data);
+
+	# Now get the links
+	my $i = 0;
+	foreach my $line2 (@hunter_data) {
+
+		$i++;
+	
+		chomp $line2;
+		my @line2 = split("\t", $line2);
+		my $patient_id2 = $line2[1];
+		
+		if ($patient_id eq $patient_id2) { 
+			next; 
+		}
+
+		my $link2  = $line2[2];
+		unless ($link2 eq 'D') {
+		
+			my @patient_id2 = split("", $patient_id2);
+			my $sex2 = pop @patient_id2;
+			my $connect_id2 = join ('', @patient_id2);	
+			if ($connect_id eq $connect_id2) {				
+				
+				print "\n\t CONNECT: $i: $connect_id ($link, $sex) = $connect_id2 ($link2, $sex2)" ;
+
+				if ($linked_ref->{$patient_id}) {
+					
+					my $linked_recipients_ref = $linked_ref->{$patient_id};
+					$linked_recipients_ref->{$patient_id2} = $sex2;
+			
+				}
+				else {
+			
+					my %linked_recipients;
+					$linked_recipients{$patient_id2} = $sex2;
+					$linked_ref->{$patient_id} = \%linked_recipients;
+				}				
+			}
+		}
+	}
+	
+}
 
 #***************************************************************************
 # Subroutine:  do_rabv_cleanup
