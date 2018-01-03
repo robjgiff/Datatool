@@ -1527,7 +1527,27 @@ sub split_fasta {
 		my $header   = $seq_obj->{header};
 		my $sequence = $seq_obj->{sequence};
 		$header =~ s/ /_/g;
-		my $fasta = ">$header\n$sequence\n\n";
+		
+		print "\n\t Sequence $i: $header";
+
+		# Split sequence so its 60 chars		
+		my $f_sequence;
+		my @sequence = split('',$sequence);
+		my $counter = 0;
+		foreach my $char (@sequence) {
+
+			if ($char eq '-') { next; }
+			$counter++;
+			$f_sequence .= $char;
+			my $result = $counter % 60;
+			#print "\n\t ## result $result";
+			unless ($result) {
+				$f_sequence .= "\n";
+				$counter = 0;
+			}
+		}
+			
+		my $fasta = ">$header\n$f_sequence\n\n";		
 		my $file_path = "$directory/$header" . ".fna";
 		#print "\n\t Read $i: $header";
 		$fileio->write_text_to_file($file_path, $fasta);
