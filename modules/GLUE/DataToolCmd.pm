@@ -1756,6 +1756,7 @@ sub show_help_page {
 	$HELP  .= "\n\t  -m=8   :   FASTA to NEXUS";
 	$HELP  .= "\n\t  -m=9   :   FASTA to PHYLIP";
 	$HELP  .= "\n\t  -m=10  :   REFSEQ to linear formatted"; 
+	$HELP  .= "\n\t  -m=11  :   GenBank feature table to GLUE project code + tables"; 
 
 	$HELP  .= "\n\n\t # Sorting, filtering, linking";
 	$HELP  .= "\n\t  -s=1   :   Shorten FASTA headers"; 
