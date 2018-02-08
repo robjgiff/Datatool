@@ -113,6 +113,9 @@ sub run_reformat_tools_cmd_line {
 	elsif ($mode eq 10) {  # Write the REFSEQ sequence and its features to FASTA
 		$self->write_GLUE_refseq_in_linear_format($infile);
 	}
+	elsif ($mode eq 11) {  # Convert GenBank feature table to GLUE-friendly feature table
+		$self->convert_genbank_feature_table($infile);
+	}
 	else { die; }
 	
 	#	$self->convert_genbank_file_to_GLUE_refseq($infiles);
@@ -980,6 +983,164 @@ sub write_GLUE_refseq_in_linear_format {
 	print "\n\t file '$outfile' created\n\n";
 
 }
+
+#***************************************************************************
+# Subroutine:  convert_genbank_feature_table
+# Description: 
+#***************************************************************************
+sub convert_genbank_feature_table {
+
+	my ($self, $infile) = @_;
+
+	my $datatool= $self->{datatool_obj};
+
+	print "\n\t # Converting GenBank feature table '$infile'";
+
+	my $i = 0;
+	my @data1;
+	$fileio->read_file($infile, \@data1);
+	my $in_feature = undef;
+
+	my %hash;
+	my @features;
+	my %feature;
+	foreach my $line (@data1) {
+
+
+		chomp $line;
+		$i++;
+
+		my @line = split ("\t", $line);
+		#$devtools->print_array(\@line);
+		my $first = shift @line;
+		if ($first) {
+			
+			if ($in_feature) {
+				my %hash_copy = %hash;  # copy a hash
+				push(@features, \%hash_copy);
+				for (keys %hash) {
+        			delete $hash{$_};
+				}			
+			}
+			
+			$in_feature = 'true';
+			my $start = $first;
+			my $end   = shift @line;
+			my $type  = shift @line;
+			$hash{start} = $start;
+			$hash{end} = $end;
+			$hash{type} = $type;
+			#print "LINE $i: first = '$first'\n";
+		
+		}
+		elsif ($in_feature) {
+			
+			my $property = $line[2];
+			my $value    = $line[3];
+
+			#print "LINE $i: '$property' = '$value'\n";
+			$hash{$property} = $value;
+		
+		}
+		
+	}
+
+	# write features tables
+	$self->write_feature_location(\@features);
+	$self->write_glue_features(\@features);
+
+}
+
+#***************************************************************************
+# Subroutine:  write_feature_location
+# Description:
+#***************************************************************************
+sub write_feature_location {
+
+	my ($self, $features_ref) = @_;
+
+	#$devtools->print_array(\@features);
+	my %files;
+	foreach my $hash_ref (@$features_ref) {
+	
+		my $start = $hash_ref->{start};
+		my $end   = $hash_ref->{end};
+		my $type  = $hash_ref->{type};
+		if ($type eq 'CDS') {
+
+
+	  		my $protein_id  = $hash_ref->{protein_id};
+	  		my $product     = $hash_ref->{product};	
+	  		unless ($product) {
+	  			next;
+	  		}	
+			my $line = "$product\t$start\t$end\t$protein_id\n";
+			if ($files{'CDS'}) {
+								
+				my $type_file_ref = $files{'CDS'};
+				push(@$type_file_ref, $line);
+				
+			}
+			else {
+				
+				my @files;
+				push(@files, $line);
+				$files{'CDS'} = \@files;
+			}
+		}
+	}
+
+	my $cd_file_ref = $files{'CDS'};
+	$fileio->write_file('cd_features.txt', $cd_file_ref);
+
+}
+
+#***************************************************************************
+# Subroutine:  write_glue_features
+# Description:
+#***************************************************************************
+sub write_glue_features {
+
+	my ($self, $features_ref) = @_;
+
+	#$devtools->print_array(\@features);
+	my %files;
+	foreach my $hash_ref (@$features_ref) {
+	
+		my $start = $hash_ref->{start};
+		my $end   = $hash_ref->{end};
+		my $type  = $hash_ref->{type};
+		if ($type eq 'CDS') {
+
+
+	  		my $protein_id  = $hash_ref->{protein_id};
+	  		my $product     = $hash_ref->{product};	
+	  		unless ($product) {
+	  			next;
+	  		}	
+	  		my $name = $product;
+	  		$name =~ s/ /_/g;
+			my $line = "create feature $name -p whole_genome \"$product\"\n";
+			if ($files{'CDS'}) {
+								
+				my $type_file_ref = $files{'CDS'};
+				push(@$type_file_ref, $line);
+				
+			}
+			else {
+				
+				my @files;
+				push(@files, $line);
+				$files{'CDS'} = \@files;
+			}
+		}
+	}
+
+	my $cd_file_ref = $files{'CDS'};
+	$fileio->write_file('cd_features.glue', $cd_file_ref);
+
+}
+
 
 #***************************************************************************
 # Subroutine:  convert_fasta_file_to_nexus
