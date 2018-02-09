@@ -124,7 +124,7 @@ sub read_fasta {
 		my $alias_id = $alias_stem . "_$i";
 		$sequence =~ s/\s+//g; # Remove whitespace
 		$sequence = uc $sequence;
-		$header = $self->clean_fasta_header($header);
+		#$header = $self->clean_fasta_header($header);
 		my $seq_obj = Sequence->new($sequence, $header, $alias_id);
 		push(@$array_ref, $seq_obj);
 	}
