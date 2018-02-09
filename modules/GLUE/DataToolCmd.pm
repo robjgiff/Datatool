@@ -116,6 +116,9 @@ sub run_reformat_tools_cmd_line {
 	elsif ($mode eq 11) {  # Convert GenBank feature table to GLUE-friendly feature table
 		$self->convert_genbank_feature_table($infile);
 	}
+	elsif ($mode eq 12) {  # Convert GenBank feature table to GLUE-friendly feature table
+		$self->convert_clustal_to_fasta($infile);
+	}
 	else { die; }
 	
 	#	$self->convert_genbank_file_to_GLUE_refseq($infiles);
@@ -984,6 +987,7 @@ sub write_GLUE_refseq_in_linear_format {
 
 }
 
+
 #***************************************************************************
 # Subroutine:  convert_genbank_feature_table
 # Description: 
@@ -1184,6 +1188,65 @@ sub convert_fasta_file_to_phylip {
 	$fileio->write_file($outfile, \@phylip);
 	print "\n\t # File '$outfile' created";
 }
+
+
+#***************************************************************************
+# Subroutine:  convert_clustal_to_fasta 
+# Description: command line interface for a Clustal-interleaved-to-FASTA conversion
+#***************************************************************************
+sub convert_clustal_to_fasta {
+
+	my ($self, $infile) = @_;
+
+	my $datatool= $self->{datatool_obj};
+	print "\n\t # Converting file '$infile' from Clustal-interleaved to FASTA format";
+	my @clustal;
+	$fileio->read_file($infile, \@clustal);
+	shift @clustal; # Remove header line;
+	
+	my %data;
+	my $i = 0;
+	foreach my $line (@clustal) {
+	
+		$i++;
+		chomp $line;
+		if    ($line =~ /^\s*$/)   { next; } # discard blank line
+		print "\n\t # $i: $line\n";
+		
+		# Split line
+		my @line = split /\s+/, $line;
+		#$devtools->print_array(\@line);
+		
+		my $header   = shift @line;
+		my $sequence = shift @line;
+		if ($data{$header}) {
+			$data{$header} .= $sequence;
+		}
+		else {		
+			$data{$header} = $sequence;
+		}
+		
+	}
+
+	$devtools->print_hash(\%data);
+	die;
+
+	my @fasta;
+	my @keys = keys %data;
+	foreach my $key (@keys) {
+	
+		my $header = $key;
+		my $sequence = $data{$key};
+		my $fasta = ">$header\n$sequence\n\n";
+		push (@fasta, $fasta);
+	}
+	
+	my $outfile = $infile . '.fas';
+	$fileio->write_file($outfile, \@fasta);
+	print "\n\t # File '$outfile' created\n\n";
+}
+
+
 
 #***************************************************************************
 # Subroutine:  concatenate_fasta
@@ -1757,6 +1820,7 @@ sub show_help_page {
 	$HELP  .= "\n\t  -m=9   :   FASTA to PHYLIP";
 	$HELP  .= "\n\t  -m=10  :   REFSEQ to linear formatted"; 
 	$HELP  .= "\n\t  -m=11  :   GenBank feature table to GLUE project code + tables"; 
+	$HELP  .= "\n\t  -m=12  :   Convert CLUSTAL interleaved to FASTA"; 
 
 	$HELP  .= "\n\n\t # Sorting, filtering, linking";
 	$HELP  .= "\n\t  -s=1   :   Shorten FASTA headers"; 
