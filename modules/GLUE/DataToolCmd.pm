@@ -119,6 +119,9 @@ sub run_reformat_tools_cmd_line {
 	elsif ($mode eq 12) {  # Convert GenBank feature table to GLUE-friendly feature table
 		$self->convert_clustal_to_fasta($infile);
 	}
+	elsif ($mode eq 13) {  # Convert GenBank feature table to GLUE-friendly feature table
+		$self->translate_sequence_alignment($infile);
+	}
 	else { die; }
 	
 	#	$self->convert_genbank_file_to_GLUE_refseq($infiles);
@@ -130,6 +133,37 @@ sub run_reformat_tools_cmd_line {
 
 	return $result;
 }
+
+#***************************************************************************
+# Subroutine:  translate_sequence_alignment
+# Description: 
+#***************************************************************************
+sub translate_sequence_alignment {
+
+	my ($self, $seqfile) = @_;
+
+	my $datatool = $self->{datatool_obj};
+	my @fasta;
+	$seqio->read_fasta($seqfile, \@fasta);
+
+	my $seq_obj = Sequence->new();
+	my @translated;
+	foreach my $seq_obj (@fasta) {
+	
+		my $header = $seq_obj->{header};
+		my $sequence = $seq_obj->{sequence};
+		
+		my $aa = $seq_obj->translate($sequence);
+		print "\n\t translation '$aa'";
+		my $translated_seq = ">$header\n$aa\n";
+		push (@translated, $translated_seq);
+		
+	
+	}
+	my $outfile = $seqfile . '.faa';
+	$fileio->write_file($outfile, \@translated);
+}
+	
 
 #***************************************************************************
 # Subroutine:  run_sort_tools_cmd_line
@@ -534,7 +568,7 @@ sub refseq_to_fasta {
 		push(@files1, $infile);
 	}
 
-	my @outfile1; # All nt ORFs in library in one file
+	my @outfile1; # All nt features in library in one file
 	my @outfile2; # All aa ORFs in library in one file
 	my %outfile3;
 	my %outfile4;
@@ -555,17 +589,28 @@ sub refseq_to_fasta {
 		my @orfs = sort keys %orfs;
 		foreach my $orf (@orfs) {
 			my $sequence = $orfs{$orf};
-			my $fasta = ">$refseq_name $orf\n$sequence\n";
+			my $fasta = ">$refseq_name" . "_" . "$orf\n$sequence\n";
 			push (@outfile1, $fasta);
 			push (@outfile3, $fasta);
 			my $aa_seq = $seq_obj->translate($sequence);
 			my $digs_style_header = $refseq_name . '_' . $orf;
 			my $aa_fasta = ">$digs_style_header\n$aa_seq\n";
 			push (@outfile2, $aa_fasta);
-			push (@outfile4, $aa_fasta);
+			push (@outfile2, $aa_fasta);
+		}
+		
+		my %utrs;
+		$refseq->get_utrs(\%utrs);
+		my @utrs = sort keys %utrs;
+		foreach my $utr (@utrs) {
+			my $sequence = $utrs{$utr};
+			my $fasta = ">$refseq_name" . "_" . "$utr\n$sequence\n";
+			push (@outfile1, $fasta);
+			push (@outfile3, $fasta);
 		}
 		$outfile3{$refseq_name} = \@outfile3;
 		$outfile4{$refseq_name} = \@outfile4;
+		
 	}
 	
 	my $outfile1 = 'orfs.nt.fas';
