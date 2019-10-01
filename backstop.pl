@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 ############################################################################
-# Script:      data_tool.pl 
+# Script:      backstop.pl 
 # Description: a collection of tools for working with sequences + data
 # History:     Version 1.0 Creation: Rob J Gifford 2014
 ############################################################################
